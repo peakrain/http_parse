@@ -1,9 +1,10 @@
 #ifndef _packet_info_h
 #define _packet_info_h
+
 /*******************************
  *五元组
 ********************************/
-typedef struct{
+typedef struct socket{
 	char src_ip[20];//源IP地址
 	char dst_ip[20];//目的IP地址
 	int src_port;//源端口
@@ -13,7 +14,7 @@ typedef struct{
 /*******************************
  *
  * *****************************/
-typedef struct{
+typedef struct info{
 	Socket *socket;
 	int seq;
 	int len;
@@ -22,8 +23,10 @@ typedef struct{
 /*******************************
  *
  * *****************************/
-typedef struct{
+typedef struct session{
 	Socket *socket; 
+	int offset;
+	int count;
 	char payload[65535];
 }http_session;
 /*******************************

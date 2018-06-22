@@ -1,17 +1,27 @@
 #include"packet_info.h"
-int is_sameconnection(Socket *socket1,Socket *socket2)
+#include<pcap.h>
+#include<linux/tcp.h>
+#include<linux/ip.h>
+#include<netinet/in.h>
+#include<arpa/inet.h>
+#include<netinet/if_ether.h>
+#include<string.h>
+#include<malloc.h>
+http_session *session;
+http_info *info;
+int is_samedirection(Socket *socket1,Socket *socket2)
 {
 	int sip=strcmp(socket1->src_ip,socket2->src_ip);
 	int dip=strcmp(socket1->dst_ip,socket2->dst_ip);
 	int sport=socket1->src_port==socket2->src_port;
 	int dport=socket1->dst_port==socket2->dst_port;
 	int prot=socket1->prot==socket2->prot;
-	if(sip==0&&dip==0sport==1&&dport==1&&prot==1)
+	if(sip==0&&dip==0&&sport==1&&dport==1&&prot==1)
 		return 1;
 	else
 		return 0;
 }
-int is_samedirection(Socket *socket1,Socket *socket2)
+int is_samesession(Socket *socket1,Socket *socket2)
 {
 	int sip=strcmp(socket1->src_ip,socket2->src_ip);
 	int dip=strcmp(socket1->dst_ip,socket2->dst_ip);
@@ -34,10 +44,10 @@ void parse_tcp(http_info *info,const u_char *packet,int offset,int len)
 {
 	struct tcphdr *tcp_h;
 	tcp_h=(struct tcphdr*)(packet+offset);
-	offset+=sizeof(struct tcphdr);
+	offset+=tcp_h->doff<<2;
 	info->socket->src_port=ntohs(tcp_h->source);
 	info->socket->dst_port=ntohs(tcp_h->dest);
-	info->seq=tcp_h->seq;
+	info->seq=ntohl(tcp_h->seq);
 	info->len=len-offset;
 	info->payload=(char *)(packet+offset);
 }
@@ -66,7 +76,45 @@ void parse_ip(http_info *info,const u_char *packet,int offset,int len)
 void call_back(u_char *user,const struct pcap_pkthdr *pkthdr,const u_char *packet)
 {
 	int offset=sizeof(struct ether_header);
-	http_info* info=malloc(sizeof(http_info));
 	parse_ip(info,packet,offset,pkthdr->len);
-	
+	printf("%02x\n",info->seq);	
+	if(session->count==0)
+	{
+		session->socket=info->socket;
+		session->count=1;
+		memcpy(session->payload+session->offset,info->payload,info->len);
+		session->offset+=info->len;
+		
+	}
+	else if(is_samedirection(session->socket,info->socket))
+	{
+		session->count++;
+		memcpy(session->payload+session->offset,info->payload,info->len);
+		session->offset+=info->len;
+	}
+	printf("%d %s\n",session->offset,session->payload);
+}
+void analysis(int num,char *buf,char *filename)
+{
+	session=(http_session*)malloc(sizeof(http_session));
+	session->socket=(Socket *)malloc(sizeof(Socket));
+	info=(http_info *)malloc(sizeof(struct info));
+	info->socket=(Socket *)malloc(sizeof(Socket));
+	char ebuf[PCAP_ERRBUF_SIZE];
+	/*open a pcap file*/
+	pcap_t *device=pcap_open_offline(filename,ebuf);
+	if(!device)
+	{
+		printf("error:%s\n",ebuf);
+		return;
+	}
+	/*catch pakcet*/
+	int i=0;
+	struct bpf_program fp;
+	pcap_compile(device,&fp,buf,1,0);
+	pcap_setfilter(device,&fp);
+	pcap_loop(device,num,call_back,NULL);
+	print(session->socket);
+	printf("%s\n",session->payload);
+	pcap_close(device);	
 }

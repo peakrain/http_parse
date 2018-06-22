@@ -9,7 +9,7 @@ typedef Node *list_t;
 
 list_t list_create();
 void list_insert(list_t list,void *element);
-void list_getElem(list_t list,int i,void *element);
-void list_delete(list_t list,int i,void *element);
+void *list_getElem(list_t list,int i);
+int list_delete(list_t list,int i);
 int list_length(list_t list);
 #endif

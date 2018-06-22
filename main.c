@@ -1,4 +1,5 @@
-#include"parse_pcap.h"
+#include"packet_info.h"
+#include<stdio.h>
 int main(int argc,char *argv[])
 {
 	if(argc!=2)
