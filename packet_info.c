@@ -7,8 +7,18 @@
 #include<netinet/if_ether.h>
 #include<string.h>
 #include<malloc.h>
-http_session *session;
+http_session *request;
+http_session *response;
+
 http_info *info;
+int socket_copy(Socket *socket1,Socket *socket2)
+{
+	strcpy(socket1->src_ip,socket2->src_ip);
+	strcpy(socket1->dst_ip,socket2->dst_ip);
+	socket1->src_port=socket2->src_port;
+	socket1->dst_port=socket2->dst_port;
+	socket1->prot=socket2->prot;
+}
 int is_samedirection(Socket *socket1,Socket *socket2)
 {
 	int sip=strcmp(socket1->src_ip,socket2->src_ip);
@@ -77,29 +87,56 @@ void call_back(u_char *user,const struct pcap_pkthdr *pkthdr,const u_char *packe
 {
 	int offset=sizeof(struct ether_header);
 	parse_ip(info,packet,offset,pkthdr->len);
-	printf("%02x\n",info->seq);	
-	if(session->count==0)
+	if(request->syn_seq==-1)
 	{
-		session->socket=info->socket;
-		session->count=1;
-		memcpy(session->payload+session->offset,info->payload,info->len);
-		session->offset+=info->len;
+		socket_copy(request->socket,info->socket);
+		request->syn_seq=info->seq;
+		request->fin_seq=info->seq;
+			
+	}else if(response->syn_seq==-1)
+	{
 		
+		socket_copy(response->socket,info->socket);
+		response->syn_seq=info->seq;
+		response->fin_seq=info->seq;
 	}
-	else if(is_samedirection(session->socket,info->socket))
+	else if(pkthdr->len>60)
 	{
-		session->count++;
-		memcpy(session->payload+session->offset,info->payload,info->len);
-		session->offset+=info->len;
+		if(is_samedirection(request->socket,info->socket))
+		{
+			int offset=(info->seq-request->syn_seq);
+			printf("offset:%d\n",offset);
+			memcpy(request->payload+offset-1,info->payload,info->len);
+			printf("len:%d data:%s\n",info->len,packet+54);
+			request->fin_seq=info->seq;
+			printf("%0x %0x %d\n",request->syn_seq,request->fin_seq,strlen(request->payload));
+		}
+		if(is_samedirection(response->socket,info->socket))
+		{
+			int offset=(info->seq-response->syn_seq);
+			printf("offset:%d\n",offset);
+			memcpy(response->payload+offset-1,info->payload,info->len);
+			printf("len:%d data:%s\n",info->len,packet+54);
+			response->fin_seq=info->seq;
+			printf("%0x %0x %d\n",response->syn_seq,response->fin_seq,strlen(response->payload));
+		}
 	}
-	printf("%d %s\n",session->offset,session->payload);
+		
 }
 void analysis(int num,char *buf,char *filename)
 {
-	session=(http_session*)malloc(sizeof(http_session));
-	session->socket=(Socket *)malloc(sizeof(Socket));
+	printf("num:%d\n",num);
+	request=(http_session*)malloc(sizeof(http_session));
+	request->socket=(Socket *)malloc(sizeof(Socket));
+	request->syn_seq=-1;
+	request->fin_seq=-1;
+	response=(http_session*)malloc(sizeof(http_session));
+	response->socket=(Socket *)malloc(sizeof(Socket));
+	response->syn_seq=-1;
+	response->fin_seq=-1;
 	info=(http_info *)malloc(sizeof(struct info));
 	info->socket=(Socket *)malloc(sizeof(Socket));
+	
 	char ebuf[PCAP_ERRBUF_SIZE];
 	/*open a pcap file*/
 	pcap_t *device=pcap_open_offline(filename,ebuf);
@@ -114,7 +151,11 @@ void analysis(int num,char *buf,char *filename)
 	pcap_compile(device,&fp,buf,1,0);
 	pcap_setfilter(device,&fp);
 	pcap_loop(device,num,call_back,NULL);
-	print(session->socket);
-	printf("%s\n",session->payload);
+	print(request->socket);
+	printf("%s\n",request->payload);
+	http_analysis(request->payload);
+	print(response->socket);
+	printf("%s\n",response->payload);
+	http_analysis(response->payload);
 	pcap_close(device);	
 }

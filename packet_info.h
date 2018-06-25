@@ -25,8 +25,8 @@ typedef struct info{
  * *****************************/
 typedef struct session{
 	Socket *socket; 
-	int offset;
-	int count;
+	int syn_seq;
+	int fin_seq;
 	char payload[65535];
 }http_session;
 /*******************************
@@ -50,14 +50,15 @@ int is_sameconnection(Socket *socket1,Socket *socket2);
  *******************************/
 int is_samedirection(Socket *socket1,Socket *socket2);
 /*******************************
- *Function:
- *Description:
- *Calls:
+ *Function:socket_copy
+ *Description:复制socket结构休
+ *Calls:strpcy
  *Called By:
- *Input:
+ *Input:Socket
  *Output:
- *Return:
+ *Return:成功返0，失败返-1
  *******************************/
+int socket_copy(Socket *socket1,Socket *socket2);
 /*******************************
  *Function:
  *Description:
