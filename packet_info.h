@@ -1,6 +1,7 @@
 #ifndef _packet_info_h
 #define _packet_info_h
 
+#include<pcap.h>
 /*******************************
  *五元组
 ********************************/
@@ -18,7 +19,7 @@ typedef struct info{
 	Socket *socket;
 	int seq;
 	int len;
-	char *payload;
+	u_char *payload;
 }http_info;
 /*******************************
  *
@@ -27,7 +28,7 @@ typedef struct session{
 	Socket *socket; 
 	int syn_seq;
 	int fin_seq;
-	char payload[65535];
+	u_char payload[65535];
 }http_session;
 /*******************************
  *Function:is_sameconnection

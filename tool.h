@@ -3,6 +3,8 @@
 
 #include"packet_info.h"
 #include<time.h>
+#include<pcap.h>
+int split(unsigned char **head,int *head_len,unsigned char ** body,int *body_len,unsigned char *source,int len);
 /****************************************
  * Function:format_time
  * Description:格式化时间
@@ -35,6 +37,16 @@ int getLine(char *buf,char **data);
  * Return:
 ****************************************/
 void print(Socket *info);
+/****************************************
+ * Function:print_02x
+ * Description:以十六进制输出数据
+ * Calls:printf
+ * Called By:
+ * Input:char *data,int length
+ * Output:
+ * Return:
+****************************************/
+void print_02x(u_char *data,int len);
 /****************************************
  * Function:
  * Description:

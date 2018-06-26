@@ -58,7 +58,10 @@ void http_analysis(char *data)
 			      sscanf(str,"%s",name)!=EOF)
 				strcat(body,str);
 			if(sscanf(body,"%s",name)!=EOF)
-				printf("响应体:\n%02x",body);
+			{
+				printf("length:%d\n",strlen(body));
+				printf("响应体:%s\n",body);
+			}
 				
 			printf("\n");
 			
