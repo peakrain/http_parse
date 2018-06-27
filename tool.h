@@ -48,6 +48,25 @@ void print(Socket *info);
 ****************************************/
 void print_02x(u_char *data,int len);
 /****************************************
+ * Function:getChunk
+ * Description:获取分块数据
+ * Calls:memcpy
+ * Called By:
+ * Input:u_char *source
+ * Output:
+ * Return:0,EOF
+****************************************/
+int getChunk(unsigned char **source,int slen);
+/****************************************
+ * Function:
+ * Description:
+ * Calls:
+ * Called By:
+ * Input:
+ * Output:
+ * Return:
+****************************************/
+/****************************************
  * Function:
  * Description:
  * Calls:

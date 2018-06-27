@@ -28,8 +28,19 @@ typedef struct session{
 	Socket *socket; 
 	int syn_seq;
 	int fin_seq;
-	u_char payload[65535];
+	int len;
+	unsigned char* payload;
 }http_session;
+/*******************************
+ *Function:sessionInit
+ *Description:初始化会话结构体
+ *Calls:malloc
+ *Called By:
+ *Input:
+ *Output:
+ *Return:
+ *******************************/
+http_session *session_create();
 /*******************************
  *Function:is_sameconnection
  *Description:判断是否是同一个连接

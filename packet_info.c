@@ -15,7 +15,8 @@ unsigned char *head;
 unsigned char *body;
 int hl;
 int bl;
-
+int count_get=0;
+int count_response=0;
 int socket_copy(Socket *socket1,Socket *socket2)
 {
 	strcpy(socket1->src_ip,socket2->src_ip);
@@ -24,6 +25,18 @@ int socket_copy(Socket *socket1,Socket *socket2)
 	socket1->dst_port=socket2->dst_port;
 	socket1->prot=socket2->prot;
 }
+http_session *session_create()
+{
+	http_session *session;
+	session=(http_session*)malloc(sizeof(http_session));
+	if(!session)
+		return NULL;
+	session->socket=(Socket*)malloc(sizeof(Socket));
+	session->syn_seq=-1;
+	session->fin_seq=-1;
+	session->len=0;
+	session->payload=(unsigned char*)malloc(sizeof(unsigned char)*65535);
+} 
 int is_samedirection(Socket *socket1,Socket *socket2)
 {
 	int sip=strcmp(socket1->src_ip,socket2->src_ip);
@@ -104,6 +117,7 @@ void call_back(u_char *user,const struct pcap_pkthdr *pkthdr,const u_char *packe
 		socket_copy(response->socket,info->socket);
 		response->syn_seq=info->seq;
 		response->fin_seq=info->seq;
+		printf("%02x %02x\n",response->syn_seq,response->fin_seq);
 	}
 	else if(pkthdr->len>60)
 	{
@@ -112,33 +126,30 @@ void call_back(u_char *user,const struct pcap_pkthdr *pkthdr,const u_char *packe
 			int offset=(info->seq-request->syn_seq);
 			memcpy(request->payload+offset-1,info->payload,info->len);
 			request->fin_seq=info->seq;
+			request->len=offset+info->len;
+			count_get++;
 		}
 		if(is_samedirection(response->socket,info->socket))
 		{
 			int offset=(info->seq-response->syn_seq);
 			memcpy(response->payload+offset-1,info->payload,info->len);
 			response->fin_seq=info->seq;
+			response->len=offset+info->len;
+			count_response++;
 		}
-	//	print_02x(info->payload,info->len);
-		if(split(&head,&hl,&body,&bl,info->payload,info->len)!=EOF)
-			printf("head_len:%d body_len:%d\n",hl,bl);
+		//print_02x(info->payload,info->len);
 	}
 		
 }
 void analysis(int num,char *buf,char *filename)
 {
-	request=(http_session*)malloc(sizeof(http_session));
-	request->socket=(Socket *)malloc(sizeof(Socket));
-	request->syn_seq=-1;
-	request->fin_seq=-1;
-	response=(http_session*)malloc(sizeof(http_session));
-	response->socket=(Socket *)malloc(sizeof(Socket));
-	response->syn_seq=-1;
-	response->fin_seq=-1;
+	request=session_create();
+	response=session_create();
 	info=(http_info *)malloc(sizeof(struct info));
 	info->socket=(Socket *)malloc(sizeof(Socket));
 
-	head=(char *)malloc(sizeof(unsigned char)*65535);	
+	head=(char *)malloc(sizeof(unsigned char)*1024);	
+	body=(char *)malloc(sizeof(unsigned char)*65535);	
 	char ebuf[PCAP_ERRBUF_SIZE];
 	/*open a pcap file*/
 	pcap_t *device=pcap_open_offline(filename,ebuf);
@@ -153,11 +164,23 @@ void analysis(int num,char *buf,char *filename)
 	pcap_compile(device,&fp,buf,1,0);
 	pcap_setfilter(device,&fp);
 	pcap_loop(device,num,call_back,NULL);
-/*	print(request->socket);
-	printf("%s\n",request->payload);
-	http_analysis(request->payload);
+	print(request->socket);
+	int length=request->fin_seq-request->syn_seq;
+	printf("request_len:%d\n",length);
+	if(split(&head,&hl,&body,&bl,request->payload,length)!=EOF)
+	{		
+		printf("finish head_len:%d body_len:%d\n",hl,bl);
+		//print_char(body,bl);
+		getChunk(&body,bl);
+	}
 	print(response->socket);
-	printf("%s\n",response->payload);
-	http_analysis(response->payload);*/
+	length=response->fin_seq-response->syn_seq;
+	printf("response_len:%d\n",length);
+	if(split(&head,&hl,&body,&bl,response->payload,length)!=EOF)
+	{		
+		printf("finish head_len:%d body_len:%d\n",hl,bl);
+		//print_char(body,bl);
+		getChunk(&body,bl);
+	}
 	pcap_close(device);	
 }

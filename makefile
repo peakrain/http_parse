@@ -1,9 +1,9 @@
-OBJ=main.o packet_info.o http_parse.o tool.o 
-GOBJ=main.c packet_info.c http_parse.c tool.c
-LIB=pcap
+OBJ=main.o packet_info.o  tool.o 
+GOBJ=main.c packet_info.c  tool.c
+LIB=-lpcap -lm -lz
 main:${OBJ}
-	gcc -o main ${OBJ} -l ${LIB}
+	gcc -o main ${OBJ}  ${LIB}
 clean:
 	rm -f *.o main core.*
 gdb:
-	gcc -g -o main ${GOBJ} -l ${LIB}
+	gcc -g -o main ${GOBJ} ${LIB}
