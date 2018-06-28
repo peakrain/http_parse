@@ -5,74 +5,6 @@
 #include<zlib.h>
 #include"pat_gzip.h"
 int ascii[2]={0x0A,0x0B};
-int gzip(unsigned char *pSrc,unsigned int srcSize)
-{
-//	print_02x(pSrc,srcSize);
-	char *pBuf=pSrc+(srcSize-1);
-	unsigned long len=*pBuf;
-	int result;
-	z_stream d_stream;
-	int i=0;
-	
-	printf("#############pSrc 0x%02x 0x%02x 0x%02x 0x%02x\n",pSrc[0],pSrc[1],pSrc[2],pSrc[3]); 
-	if((*pSrc!=0x1f)||(*(pSrc+1)!=0x8b))
-	{
-		printf("non gzip");
-		return EOF;
-	}
-	for(i=0;i<3;i++)
-	{
-		pBuf--;
-		len<<=8;
-		len+=*pBuf;
-	}
-	len=102400;
-	if((len==0)||(len>1000000))
-	{
-		printf("error gzip:%d\n",len);
-		return EOF;
-	}
-	d_stream.zalloc=Z_NULL;
-	d_stream.zfree=Z_NULL;
-	d_stream.opaque=Z_NULL;
-	d_stream.next_in=Z_NULL;
-	d_stream.avail_in=0;
-	
-	result=inflateInit2(&d_stream,47);
-	
-	if(result!=Z_OK)
-	{
-		printf("init error:%d\n",result);
-		return result;
-	}
-	
-	unsigned char *outstream=(unsigned char*)malloc(sizeof(unsigned char)*69535);
-	d_stream.next_in=pSrc;
-	d_stream.avail_in=srcSize;
-	d_stream.next_out=outstream;
-	d_stream.avail_out=len;
-	result=inflate(&d_stream,Z_NO_FLUSH);
-	
-	switch(result)
-	{
-		case Z_NEED_DICT:
-			result=Z_DATA_ERROR;
-		case Z_DATA_ERROR:
-		case Z_MEM_ERROR:
-			(void)inflateEnd(&d_stream);
-			return result;
-		
-	}
-	int o_len=len-d_stream.avail_out;
-	printf("len:%d\n",o_len);
-//	print_c(outstream,o_len);
-
-	printf("%s\n",outstream);
-//	print_02x(outstream,len);
-	//inflateEnd(&d_stream);
-
-	return 0;
-}
 int split(unsigned char **head,int *head_len,unsigned char ** body,int *body_len,unsigned char *source,int len)
 {
 	int i;
@@ -172,7 +104,18 @@ int getChunk(unsigned char **source,int slen)
 //		printf("slen:%d\n",slen);		
 	}
 //	print_char(out_stream,len);	
-	gzip(out_stream,len);
+	int out_len=655350;
+	unsigned char *out_data=(unsigned char*)malloc(sizeof(unsigned char)*out_len);
+	pat_gzip_uncompress(out_stream,len,&out_data,&out_len);
+	printf("len:%d \ndata:\n%s\n",out_len,out_data);
+	int in_len=1000;
+	unsigned char *in_data=(unsigned char *)malloc(sizeof(unsigned char)*in_len);
+	if(pat_gzip_compress(out_data,out_len,&in_data,&in_len)==0)
+	{
+		print_02x(in_data,in_len);
+		printf("len:%d \ndata:\n%s\n",in_len,in_data);
+	}
+
 	return EOF;
 }
 int getLine(char *buf,char **data)
