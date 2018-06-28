@@ -3,11 +3,13 @@
 #include<string.h>
 #include<malloc.h>
 #include<zlib.h>
+#include"pat_gzip.h"
 int ascii[2]={0x0A,0x0B};
 int gzip(unsigned char *pSrc,unsigned int srcSize)
 {
+//	print_02x(pSrc,srcSize);
 	char *pBuf=pSrc+(srcSize-1);
-	unsigned int len=*pBuf;
+	unsigned long len=*pBuf;
 	int result;
 	z_stream d_stream;
 	int i=0;
@@ -24,7 +26,7 @@ int gzip(unsigned char *pSrc,unsigned int srcSize)
 		len<<=8;
 		len+=*pBuf;
 	}
-	len=65535;
+	len=102400;
 	if((len==0)||(len>1000000))
 	{
 		printf("error gzip:%d\n",len);
@@ -44,11 +46,11 @@ int gzip(unsigned char *pSrc,unsigned int srcSize)
 		return result;
 	}
 	
-	unsigned char *outstream=(unsigned char*)malloc(sizeof(unsigned char)*65535);
+	unsigned char *outstream=(unsigned char*)malloc(sizeof(unsigned char)*69535);
 	d_stream.next_in=pSrc;
 	d_stream.avail_in=srcSize;
 	d_stream.next_out=outstream;
-	d_stream.avail_out=65535;
+	d_stream.avail_out=len;
 	result=inflate(&d_stream,Z_NO_FLUSH);
 	
 	switch(result)
@@ -61,8 +63,14 @@ int gzip(unsigned char *pSrc,unsigned int srcSize)
 			return result;
 		
 	}
-	inflateEnd(&d_stream);
+	int o_len=len-d_stream.avail_out;
+	printf("len:%d\n",o_len);
+//	print_c(outstream,o_len);
+
 	printf("%s\n",outstream);
+//	print_02x(outstream,len);
+	//inflateEnd(&d_stream);
+
 	return 0;
 }
 int split(unsigned char **head,int *head_len,unsigned char ** body,int *body_len,unsigned char *source,int len)
@@ -71,14 +79,16 @@ int split(unsigned char **head,int *head_len,unsigned char ** body,int *body_len
 	char *temp=(char *)malloc(sizeof(char));
 	unsigned char *p=source;
 	for(i=0;i<len;i++)
-		if(i<len-4)
+		if(i<len-3)
 		{
 			if(p[i]==0x0d&&p[i+1]==0x0a&&p[i+2]==0x0d&&p[i+3]==0x0a)
 			{
 				*head_len=i+2;
+				*body_len=len-(i+4);
+				if(*body_len<=0)
+					return EOF;
 				memcpy(*head,source,*head_len);
 				p=p+i+4;
-				*body_len=len-(i+4);
 				memcpy(*body,p,*body_len);
 				return 0;
 			}
@@ -132,7 +142,8 @@ int getChunk(unsigned char **source,int slen)
 	unsigned char *out_stream=(unsigned char *)malloc(sizeof(unsigned char)*65535*2);
 	int len=0;
 	int l;
-	while(slen>0)
+	int done=0;
+	while(slen>0&&done==0)
 	{	
 		for(i=0;i<slen;i++)
 			if(i<slen-1&&p[i]==0x0d&&p[i+1]==0x0a)
@@ -146,8 +157,10 @@ int getChunk(unsigned char **source,int slen)
 				memcpy(temp,p,i);	
 				l=ctoi(temp,i);
 				if(l==0)
-					printf("slen:%d\n",slen);
-				printf("%d\n",len);
+				{
+					done=1;
+					break;
+				}		
 				p=p+i+2;
 				memcpy(out_stream+len,p,l);
 				len+=l;
@@ -155,7 +168,10 @@ int getChunk(unsigned char **source,int slen)
 				p=p+l;
 				slen=slen-l-(i+2);
 				break;
-	}		}	
+			}
+//		printf("slen:%d\n",slen);		
+	}
+//	print_char(out_stream,len);	
 	gzip(out_stream,len);
 	return EOF;
 }
@@ -181,7 +197,7 @@ void print(Socket *info)
 	printf("Dst_Port:%d ",info->dst_port);
 	printf("Protocol:%d\n",info->prot);	
 }
-void print_02x(u_char *data,int len)
+void print_02x(unsigned char *data,int len)
 {
 	int i;
 	for(i=0;i<len;i++)
@@ -192,7 +208,13 @@ void print_02x(u_char *data,int len)
 	}
 	printf("\n");
 }
-void print_char(u_char *data,int len)
+void print_c(unsigned char *data,int len)
+{
+	int i;
+	for(i=0;i<len;i++)
+		printf("%c",data[i]);
+}
+void print_char(unsigned char *data,int len)
 {
 	int i,up,down;
 	for(i=0;i<len;i++)

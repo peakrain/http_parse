@@ -15,6 +15,7 @@ unsigned char *head;
 unsigned char *body;
 int hl;
 int bl;
+int count=0;
 int count_get=0;
 int count_response=0;
 int socket_copy(Socket *socket1,Socket *socket2)
@@ -103,6 +104,7 @@ void parse_ip(http_info *info,const u_char *packet,int offset,int len)
 }
 void call_back(u_char *user,const struct pcap_pkthdr *pkthdr,const u_char *packet)
 {
+	count++;
 	int offset=sizeof(struct ether_header);
 	parse_ip(info,packet,offset,pkthdr->len);
 	if(request->syn_seq==-1)
@@ -117,22 +119,21 @@ void call_back(u_char *user,const struct pcap_pkthdr *pkthdr,const u_char *packe
 		socket_copy(response->socket,info->socket);
 		response->syn_seq=info->seq;
 		response->fin_seq=info->seq;
-		printf("%02x %02x\n",response->syn_seq,response->fin_seq);
 	}
 	else if(pkthdr->len>60)
 	{
 		if(is_samedirection(request->socket,info->socket))
 		{
-			int offset=(info->seq-request->syn_seq);
-			memcpy(request->payload+offset-1,info->payload,info->len);
+			int offset=(info->seq-request->syn_seq)-1;
+			memcpy(request->payload+offset,info->payload,info->len);
 			request->fin_seq=info->seq;
 			request->len=offset+info->len;
 			count_get++;
 		}
 		if(is_samedirection(response->socket,info->socket))
 		{
-			int offset=(info->seq-response->syn_seq);
-			memcpy(response->payload+offset-1,info->payload,info->len);
+			int offset=(info->seq-response->syn_seq)-1;
+			memcpy(response->payload+offset,info->payload,info->len);
 			response->fin_seq=info->seq;
 			response->len=offset+info->len;
 			count_response++;
@@ -165,22 +166,22 @@ void analysis(int num,char *buf,char *filename)
 	pcap_setfilter(device,&fp);
 	pcap_loop(device,num,call_back,NULL);
 	print(request->socket);
-	int length=request->fin_seq-request->syn_seq;
-	printf("request_len:%d\n",length);
-	if(split(&head,&hl,&body,&bl,request->payload,length)!=EOF)
+	printf("request_count:%d request_len:%d\n",count_get,request->len);
+//	print_char(request->payload,request->len);
+	if(split(&head,&hl,&body,&bl,request->payload,request->len)!=EOF)
 	{		
-		printf("finish head_len:%d body_len:%d\n",hl,bl);
+		printf("request_finish head_len:%d body_len:%d\n",hl,bl);
 		//print_char(body,bl);
 		getChunk(&body,bl);
 	}
 	print(response->socket);
-	length=response->fin_seq-response->syn_seq;
-	printf("response_len:%d\n",length);
-	if(split(&head,&hl,&body,&bl,response->payload,length)!=EOF)
+	printf("response_count:%d response_len:%d\n",count_response,response->len);
+	if(split(&head,&hl,&body,&bl,response->payload,response->len)!=EOF)
 	{		
-		printf("finish head_len:%d body_len:%d\n",hl,bl);
+		printf("response_finish head_len:%d body_len:%d\n",hl,bl);
 		//print_char(body,bl);
 		getChunk(&body,bl);
 	}
+	printf("total:%d\n",count);
 	pcap_close(device);	
 }
