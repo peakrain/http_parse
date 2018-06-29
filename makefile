@@ -1,5 +1,5 @@
-OBJ=main.o packet_info.o  tool.o 
-GOBJ=main.c packet_info.c  tool.c
+OBJ=main.o sup_packet.o  LinkList.o pat_print.o
+GOBJ=main.c sup_packet.c LinkList.c pat_print.c
 LIB=-lpcap -lm -lz
 main:${OBJ}
 	gcc -o main ${OBJ}  ${LIB}
