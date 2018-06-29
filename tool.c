@@ -1,10 +1,10 @@
 #include"tool.h"
+#include<stdio.h>
 #include<math.h>
 #include<string.h>
 #include<malloc.h>
-#include<zlib.h>
 #include"pat_gzip.h"
-int ascii[2]={0x0A,0x0B};
+#include"pat_print.h"
 int split(unsigned char **head,int *head_len,unsigned char ** body,int *body_len,unsigned char *source,int len)
 {
 	int i;
@@ -26,18 +26,6 @@ int split(unsigned char **head,int *head_len,unsigned char ** body,int *body_len
 			}
 		}
 	return EOF;
-}
-int is_ascii(unsigned char c)
-{
-	int up=c-0x7E;
-	int down=0x20-c;
-	if(up<=0&&down<=0)
-		return 1;
-	/*int i;
-	for(i=0;i<2;i++)
-	if(c==ascii[i])
-		return 1;*/
-	return 0;
 }
 int ctoi(unsigned char *str,int len)
 {
@@ -105,16 +93,21 @@ int getChunk(unsigned char **source,int slen)
 	}
 //	print_char(out_stream,len);	
 	int out_len=655350;
-	unsigned char *out_data=(unsigned char*)malloc(sizeof(unsigned char)*out_len);
-	pat_gzip_uncompress(out_stream,len,&out_data,&out_len);
+	unsigned char *out_data;
+	auto_gzip_uncompress(out_stream,len,&out_data,&out_len);
+	FILE *file=fopen("test.html","wb");
+	fwrite(out_data,out_len,1,file);
+	fclose(file);
 	printf("len:%d \ndata:\n%s\n",out_len,out_data);
-	int in_len=1000;
-	unsigned char *in_data=(unsigned char *)malloc(sizeof(unsigned char)*in_len);
-	if(pat_gzip_compress(out_data,out_len,&in_data,&in_len)==0)
+	int in_len;
+	unsigned char *in_data;
+	if(auto_gzip_compress(out_data,out_len,&in_data,&in_len)==0)
 	{
-		print_02x(in_data,in_len);
-		printf("len:%d \ndata:\n%s\n",in_len,in_data);
+		pat_print_02x(in_data,in_len);
+		printf("len:%d \n",in_len);
 	}
+	auto_gzip_uncompress(out_stream,len,&out_data,&out_len);
+	printf("len:%d \ndata:\n%s\n",out_len,out_data);
 
 	return EOF;
 }
@@ -132,46 +125,3 @@ int getLine(char *buf,char **data)
 	*data=p;
 	return ebuf;
 }
-void print(Socket *info)
-{
-	printf("Src_IP:%s ",info->src_ip);
-	printf("Dst_IP:%s ",info->dst_ip);
-	printf("Src_Port:%d ",info->src_port);
-	printf("Dst_Port:%d ",info->dst_port);
-	printf("Protocol:%d\n",info->prot);	
-}
-void print_02x(unsigned char *data,int len)
-{
-	int i;
-	for(i=0;i<len;i++)
-	{
-		printf("%02x ",data[i]);
-		if((i+1)%16==0)
-			printf("\n");
-	}
-	printf("\n");
-}
-void print_c(unsigned char *data,int len)
-{
-	int i;
-	for(i=0;i<len;i++)
-		printf("%c",data[i]);
-}
-void print_char(unsigned char *data,int len)
-{
-	int i,up,down;
-	for(i=0;i<len;i++)
-	{
-		if(i<len-1&&data[i+1]==0x0a&&data[i]==0x0d)
-		{
-			printf("\n");
-			i++;
-			continue;
-		}
-		if(is_ascii(data[i]))
-			printf("%c",data[i]);
-		else
-			printf(".");
-	}
-	printf("\n");
-} 

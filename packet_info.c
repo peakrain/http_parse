@@ -6,6 +6,7 @@
 #include<netinet/if_ether.h>
 #include<string.h>
 #include<malloc.h>
+#include"pat_print.h"
 http_session *request;
 http_session *response;
 
@@ -165,7 +166,7 @@ void analysis(int num,char *buf,char *filename)
 	pcap_compile(device,&fp,buf,1,0);
 	pcap_setfilter(device,&fp);
 	pcap_loop(device,num,call_back,NULL);
-	print(request->socket);
+	pat_print_socket(request->socket);
 	printf("request_count:%d request_len:%d\n",count_get,request->len);
 //	print_char(request->payload,request->len);
 	if(split(&head,&hl,&body,&bl,request->payload,request->len)!=EOF)
@@ -174,7 +175,7 @@ void analysis(int num,char *buf,char *filename)
 		//print_char(body,bl);
 		getChunk(&body,bl);
 	}
-	print(response->socket);
+	pat_print_socket(response->socket);
 	printf("response_count:%d response_len:%d\n",count_response,response->len);
 	if(split(&head,&hl,&body,&bl,response->payload,response->len)!=EOF)
 	{		
